@@ -12,8 +12,13 @@ data Verb
   | Undo
   | Release deriving (Show, Eq)
 
-data Importance = PossiblyBreaking | Breaking | Critical
+data Importance
+    = PossiblyBreaking -- ^ `?` (question) Changes something exposed externally, but not an API. It SHOULD NOT be breaking for projects that depend on the underlying repository.
+    | Breaking -- ^ `!` (exclamation) Changes something exposed externally, and MAY break projects that depend on the underlying repository.
+    | Critical deriving (Show, Eq) -- ^ `!!` (loud exclamation) This change is critical ─ previous versions have severe issues that must be addressed. Projects depending on the underlying repository SHOULD update immediately. The <footer> MUST specify the last safe commit (Last-safe-commit).
+
 data Scope = Executable | BackendLibrary | Testing | Building | Documentation | ContinousIntegration | ContinuousDelivery
+
 data Reason = Introduction | Preliminary | Efficiency | Reliability | Compatibility | Temporary | Experiment | Security | Upgrade | UserExperience | Policy | Styling
 
 -- <verb><importance?>(<scope?>)[<reason?>]: <summary>
@@ -21,11 +26,10 @@ data Reason = Introduction | Preliminary | Efficiency | Reliability | Compatibil
 -- <body?>
 --
 -- <footer?>
-data CommitMsg = CommitMsg {
-    verb :: Verb
+data CommitMessage = CommitMessage {
+    verb :: Verb,
+    importance :: Maybe Importance
 } deriving (Show, Eq)
-
-
 
 parseVerb :: Parser Verb
 parseVerb =
@@ -72,8 +76,24 @@ parseScope =
         ]
     pure verb
 
+
+parseImportance :: Parser (Maybe Importance)
+parseImportance = do
+    choice [
+        string "?" *> pure (Just PossiblyBreaking),
+        string "!" *> pure (Just Breaking),
+        string "!!" *> pure (Just Critical)
+        ]
+    <|> pure Nothing
+
+parseCommitMessage :: Parser CommitMessage
+parseCommitMessage = do
+    verb <- parseVerb
+    importance <- parseImportance
+    pure $ CommitMessage verb importance
+
 parseStandardCommitMessage :: String -> IO ()
 parseStandardCommitMessage commitMsg = do
-    case parse parseVerb "CommitMsg" commitMsg of
+    case parse parseCommitMessage "CommitMsg" commitMsg of
         Left err -> putStrLn $ "Error: " ++ show err
         Right msg -> print msg
