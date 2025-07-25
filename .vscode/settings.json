@@ -1,0 +1,9 @@
+{
+    "haskell.formattingProvider": "ormolu",
+    "haskell.plugin.hlint.diagnosticsOn": true,
+    "haskell.cabalFormattingProvider": "cabal-fmt",
+    "[haskell]": {
+        "editor.defaultFormatter": "haskell.haskell",
+        "editor.formatOnSave": true,
+    },
+}
