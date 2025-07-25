@@ -4,6 +4,7 @@ import Text.Parsec
 import Text.Parsec.String (Parser)
 
 -- ^ A <verb> describes how something has changed via an expectation. An expectation is a requirement that the code should respect. The Standard Commits format provides a set of predefined verbs to ensure consistency and clarity in commit messages, and other verbs SHOULD be avoided.
+-- ^ Implies the change MUST NOT be particularly relevant for maintainers or users. This field is a marker that is intended to be applied only to specific commits that maintainers/users should pay attention to.
 
 data Verb
   = -- | Adds an expectation Introduces new content to the repository with the expectation that it SHALL behave as intended.
@@ -14,7 +15,6 @@ data Verb
   | Undo
   | Release
   deriving (Show, Eq)
--- ^ Implies the change MUST NOT be particularly relevant for maintainers or users. This field is a marker that is intended to be applied only to specific commits that maintainers/users should pay attention to.
 
 data Importance
   = -- | `?` (question) Changes something exposed externally, but not an API. It SHOULD NOT be breaking for projects that depend on the underlying repository.
@@ -57,18 +57,20 @@ data StandardCommit = StandardCommit
 
 type CommitMsg = String
 
+-- | Parses the verb of a commit message, accepting both full and shorthand forms.
 parseVerb :: Parser Verb
-parseVerb = do
-  verb <-
-    choice
-      [ string "add" *> pure Add,
-        string "remove" *> pure Remove,
-        string "refactor" *> pure Refactor,
-        string "fix" *> pure Fix,
-        string "undo" *> pure Undo,
-        string "release" *> pure Release
-      ]
-  pure verb
+parseVerb =
+  -- ? For sure this can be abstracted futher with map or smth
+  choice
+    [ try (string "refactor" *> pure Refactor),
+      try (string "release" *> pure Release),
+      try (string "remove" *> pure Remove),
+      try (string "add" *> pure Add),
+      try (string "undo" *> pure Undo),
+      try (string "fix" *> pure Fix),
+      try (string "rem" *> pure Remove),
+      string "ref" *> pure Refactor
+    ]
 -- ^ Parses the importance of a commit message, which can be one of the
 -- following: `?`, `!`, `!!`, or nothing.
 -- If it is not specified, it defaults to `Nothing`.
@@ -76,6 +78,7 @@ parseVerb = do
 parseImportance :: Parser (Maybe Importance)
 parseImportance =
   do
+    -- ? For sure this can be abstracted futher with map or smth
     choice
       [ string "?" *> pure (Just PossiblyBreaking),
         string "!" *> pure (Just Breaking),
@@ -90,13 +93,13 @@ parseScope =
     _ <- char '('
     scopeKind <-
       choice
-        [ string "exe" *> pure Executable,
-          string "lib" *> pure BackendLibrary,
-          string "test" *> pure Testing,
-          string "build" *> pure Building,
-          string "docs" *> pure Documentation,
-          string "ci" *> pure ContinousIntegration,
-          string "cd" *> pure ContinuousDelivery
+        [ try (string "exe" *> pure Executable),
+          try (string "lib" *> pure BackendLibrary),
+          try (string "test" *> pure Testing),
+          try (string "build" *> pure Building),
+          try (string "docs" *> pure Documentation),
+          try (string "ci" *> pure ContinousIntegration),
+          try (string "cd" *> pure ContinuousDelivery)
         ]
     mSub <- optionMaybe (char '/' *> many1 (noneOf ")[]:"))
     _ <- char ')'
@@ -104,11 +107,10 @@ parseScope =
 
 parseCommitMessage :: Parser StandardCommit
 parseCommitMessage = do
-  verb <- parseVerb
-  importance <- parseImportance
-  scope <- parseScope
-  --   Handle newline after first line
-  pure $ StandardCommit verb importance "" scope
+  v <- parseVerb
+  imp <- parseImportance
+  sc <- parseScope
+  pure $ StandardCommit v imp "" sc
 
 -- | Parses a commit message in the Standard Commits format.
 parseStandardCommitMessage :: CommitMsg -> Either ParseError StandardCommit
