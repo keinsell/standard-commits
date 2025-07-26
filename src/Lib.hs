@@ -28,19 +28,20 @@ data Importance
       Eq
     )
 
+type ScopeContext = Maybe String
 data Scope
   = -- | `exe` (executable) The change affects the executable part of the project.
-    Executable (Maybe String)
-  | BackendLibrary (Maybe String)
-  | Testing (Maybe String)
-  | Building (Maybe String)
-  | Documentation (Maybe String)
-  | ContinousIntegration (Maybe String)
-  | ContinuousDelivery (Maybe String)
+    Executable (ScopeContext)
+  | BackendLibrary (ScopeContext)
+  | Testing (ScopeContext)
+  | Building (ScopeContext)
+  | Documentation (ScopeContext)
+  | ContinousIntegration (ScopeContext)
+  | ContinuousDelivery (ScopeContext)
   deriving
     (Show, Eq)
 
-data Reason = Introduction | Preliminary | Efficiency | Reliability | Compatibility | Temporary | Experiment | Security | Upgrade | UserExperience | Policy | Styling
+data Reason = Introduction | Preliminary | Efficiency | Reliability | Compatibility | Temporary | Experiment | Security | Upgrade | UserExperience | Policy | Styling deriving (Show, Eq)
 
 -- <verb><importance?>(<scope?>)[<reason?>]: <summary>
 --
@@ -51,7 +52,8 @@ data StandardCommit = StandardCommit
   { verb :: Verb,
     importance :: Maybe Importance,
     summary :: String,
-    scope :: Maybe Scope
+    scope :: Maybe Scope,
+    reason :: Maybe Reason
   }
   deriving (Show, Eq)
 
@@ -101,16 +103,57 @@ parseScope =
           try (string "ci" *> pure ContinousIntegration),
           try (string "cd" *> pure ContinuousDelivery)
         ]
-    mSub <- optionMaybe (char '/' *> many1 (noneOf ")[]:"))
+    moduleName <- optionMaybe (char '/' *> many1 (noneOf ")[]:"))
     _ <- char ')'
-    pure $ scopeKind mSub
+    pure $ scopeKind moduleName
+
+reasonStr :: Reason -> String
+reasonStr reason =
+  case reason of
+    Introduction -> "int"
+    Preliminary -> "pre"
+    Efficiency -> "eff"
+    Reliability -> "rel"
+    Compatibility -> "cmp"
+    Temporary -> "tmp"
+    Experiment -> "exp"
+    Security -> "sec"
+    Upgrade -> "upg"
+
+
+reasonAbbreviations :: [(String, Reason)]
+reasonAbbreviations =
+      [ ("int", Introduction),
+        ("pre", Preliminary),
+        ("eff", Efficiency),
+        ("rel", Reliability),
+        ("cmp", Compatibility),
+        ("tmp", Temporary),
+        ("exp", Experiment),
+        ("sec", Security),
+        ("upg", Upgrade),
+        ("ux", UserExperience),
+        ("pol", Policy),
+        ("sty", Styling)
+      ]
+
+parseReason :: Parser (Maybe Reason)
+parseReason =
+      optionMaybe $ do
+        _ <- char '['
+        reason <- choice . map (\(abbr, r) -> try (string abbr *> pure r)) $ reasonAbbreviations
+        _ <- char ']'
+        pure reason
 
 parseCommitMessage :: Parser StandardCommit
 parseCommitMessage = do
   v <- parseVerb
   imp <- parseImportance
   sc <- parseScope
-  pure $ StandardCommit v imp "" sc
+  reason <- parseReason
+  _ <- char ':'
+  summ <- manyTill anyChar eof
+  pure $ StandardCommit v imp summ sc reason
 
 -- | Parses a commit message in the Standard Commits format.
 parseStandardCommitMessage :: CommitMsg -> Either ParseError StandardCommit
