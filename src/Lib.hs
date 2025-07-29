@@ -1,5 +1,7 @@
 module Lib where
 
+import Control.Applicative
+import Control.Monad (void)
 import Text.Parsec
 import Text.Parsec.String (Parser)
 
@@ -29,6 +31,7 @@ data Importance
     )
 
 type ScopeContext = Maybe String
+
 data Scope
   = -- | `exe` (executable) The change affects the executable part of the project.
     Executable (ScopeContext)
@@ -86,7 +89,7 @@ parseImportance =
         string "!" *> pure (Just Breaking),
         string "!!" *> pure (Just Critical)
       ]
-    <|> pure Nothing
+    Text.Parsec.<|> pure Nothing
 
 -- (lib) || (lib/<lib>) || Nothing
 parseScope :: Parser (Maybe Scope)
@@ -120,30 +123,32 @@ reasonStr reason =
     Security -> "sec"
     Upgrade -> "upg"
 
-
 reasonAbbreviations :: [(String, Reason)]
 reasonAbbreviations =
-      [ ("int", Introduction),
-        ("pre", Preliminary),
-        ("eff", Efficiency),
-        ("rel", Reliability),
-        ("cmp", Compatibility),
-        ("tmp", Temporary),
-        ("exp", Experiment),
-        ("sec", Security),
-        ("upg", Upgrade),
-        ("ux", UserExperience),
-        ("pol", Policy),
-        ("sty", Styling)
-      ]
+  [ ("int", Introduction),
+    ("pre", Preliminary),
+    ("eff", Efficiency),
+    ("rel", Reliability),
+    ("cmp", Compatibility),
+    ("tmp", Temporary),
+    ("exp", Experiment),
+    ("sec", Security),
+    ("upg", Upgrade),
+    ("ux", UserExperience),
+    ("pol", Policy),
+    ("sty", Styling)
+  ]
 
 parseReason :: Parser (Maybe Reason)
 parseReason =
-      optionMaybe $ do
-        _ <- char '['
-        reason <- choice . map (\(abbr, r) -> try (string abbr *> pure r)) $ reasonAbbreviations
-        _ <- char ']'
-        pure reason
+  optionMaybe $ do
+    _ <- char '['
+    reason <- choice . map (\(abbr, r) -> try (string abbr *> pure r)) $ reasonAbbreviations
+    _ <- char ']'
+    pure reason
+
+parseSummary :: Parser String
+parseSummary = manyTill anyChar (eof Control.Applicative.<|> void newline)
 
 parseCommitMessage :: Parser StandardCommit
 parseCommitMessage = do
@@ -152,8 +157,9 @@ parseCommitMessage = do
   sc <- parseScope
   reason <- parseReason
   _ <- char ':'
-  summ <- manyTill anyChar eof
-  pure $ StandardCommit v imp summ sc reason
+  _ <- space
+  summary <- parseSummary
+  pure $ StandardCommit v imp summary sc reason
 
 -- | Parses a commit message in the Standard Commits format.
 parseStandardCommitMessage :: CommitMsg -> Either ParseError StandardCommit

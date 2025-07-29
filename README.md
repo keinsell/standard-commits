@@ -17,3 +17,4 @@
 
 - [Intro to Parsing with Parsec in Haskell](https://jakewheat.github.io/intro_to_parsing)
 - [Parser Combinators](https://crypto.stanford.edu/~blynn/haskell/parse.html)
+- [Regex Applicative](https://github.com/UnkindPartition/regex-applicative/wiki/Examples)
