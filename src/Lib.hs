@@ -46,18 +46,7 @@ data Scope
 
 data Reason = Introduction | Preliminary | Efficiency | Reliability | Compatibility | Temporary | Experiment | Security | Upgrade | UserExperience | Policy | Styling deriving (Show, Eq)
 
--- <verb><importance?>(<scope?>)[<reason?>]: <summary>
---
--- <body?>
---
--- <footer?>
-data StandardCommit = StandardCommit
-  { verb :: Verb,
-    importance :: Maybe Importance,
-    summary :: String,
-    scope :: Maybe Scope,
-    reason :: Maybe Reason
-  }
+data StandardCommit = StandardCommit Verb (Maybe Importance) (Maybe Scope) (Maybe Reason) String (Maybe String) (Maybe String)
   deriving (Show, Eq)
 
 type CommitMsg = String
@@ -142,15 +131,7 @@ parseSummary :: Parser String
 parseSummary = manyTill anyChar (eof Control.Applicative.<|> void newline)
 
 parseCommitMessage :: Parser StandardCommit
-parseCommitMessage = do
-  v <- parseVerb
-  imp <- parseImportance
-  sc <- parseScope
-  reason <- parseReason
-  _ <- char ':'
-  _ <- space
-  summary <- parseSummary
-  pure $ StandardCommit v imp summary sc reason
+parseCommitMessage = StandardCommit <$> parseVerb <*> parseImportance <*> parseScope <*> parseReason <* char ':' <* space <*> parseSummary <*> pure Nothing <*> pure Nothing
 
 -- | Parses a commit message in the Standard Commits format.
 parseStandardCommitMessage :: CommitMsg -> Either ParseError StandardCommit

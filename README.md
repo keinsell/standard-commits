@@ -12,6 +12,7 @@
 - [ ] Tests
 - [ ] Compilation and distribution research
 - [ ] Simple expressions
+- [ ] [Parser Combinators](https://github.com/lettier/parsing-with-haskell-parser-combinators)
 
 ## References
 
