@@ -110,19 +110,6 @@ parseScope =
     _ <- char ')'
     pure $ scopeKind moduleName
 
-reasonStr :: Reason -> String
-reasonStr reason =
-  case reason of
-    Introduction -> "int"
-    Preliminary -> "pre"
-    Efficiency -> "eff"
-    Reliability -> "rel"
-    Compatibility -> "cmp"
-    Temporary -> "tmp"
-    Experiment -> "exp"
-    Security -> "sec"
-    Upgrade -> "upg"
-
 reasonAbbreviations :: [(String, Reason)]
 reasonAbbreviations =
   [ ("int", Introduction),
@@ -139,13 +126,17 @@ reasonAbbreviations =
     ("sty", Styling)
   ]
 
+-- Use `choice` to create parser that would match any Reason string into actual Reason datatype.
+-- ? Is it possible to have Read instance on Reason datatype and use it instead defining the reasonAbbreviations variable?
+reasonParser :: Parser Reason
+reasonParser = choice [try (string abbr *> pure r) | (abbr, r) <- reasonAbbreviations]
+
+-- | Parse Reason from a string, which is expected to be between square brackets, e.g. [upg] will parse to Just Upgrade.
 parseReason :: Parser (Maybe Reason)
 parseReason =
-  optionMaybe $ do
-    _ <- char '['
-    reason <- choice . map (\(abbr, r) -> try (string abbr *> pure r)) $ reasonAbbreviations
-    _ <- char ']'
-    pure reason
+  optionMaybe $
+    between (char '[') (char ']') $
+      reasonParser
 
 parseSummary :: Parser String
 parseSummary = manyTill anyChar (eof Control.Applicative.<|> void newline)
