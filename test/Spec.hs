@@ -1,5 +1,3 @@
--- Test suite for parseVerb function using HSpec
-
 import Data.Either (isLeft)
 import Lib (Scope (..), Verb (..), parseScope, parseVerb, parseReason, Reason(..))
 import Test.Hspec

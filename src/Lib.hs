@@ -5,22 +5,24 @@ import Control.Monad (void)
 import Text.Parsec
 import Text.Parsec.String (Parser)
 
+-- import qualified Data.Map as Map
+
 -- ^ A <verb> describes how something has changed via an expectation. An expectation is a requirement that the code should respect. The Standard Commits format provides a set of predefined verbs to ensure consistency and clarity in commit messages, and other verbs SHOULD be avoided.
 -- ^ Implies the change MUST NOT be particularly relevant for maintainers or users. This field is a marker that is intended to be applied only to specific commits that maintainers/users should pay attention to.
 
 data Verb
   = -- | Adds an expectation Introduces new content to the repository with the expectation that it SHALL behave as intended.
     Add
-    -- | ...
-  | Remove
-    -- | ...
-  | Refactor
-    -- | ...
-  | Fix
-    -- | ...
-  | Undo
-    -- | ...
-  | Release
+  | -- | ...
+    Remove
+  | -- | ...
+    Refactor
+  | -- | ...
+    Fix
+  | -- | ...
+    Undo
+  | -- | ...
+    Release
   deriving (Show, Eq)
 
 data Importance
@@ -51,7 +53,7 @@ data Scope
 
 data Reason = Introduction | Preliminary | Efficiency | Reliability | Compatibility | Temporary | Experiment | Security | Upgrade | UserExperience | Policy | Styling deriving (Show, Eq)
 
-data StandardCommit = StandardCommit Verb (Maybe Importance) (Maybe Scope) (Maybe Reason) String (Maybe String) (Maybe String)
+data StandardCommit = StandardCommit Verb (Maybe Importance) (Maybe Scope) (Maybe Reason) CommitMsg (Maybe String) (Maybe [(String, String)])
   deriving (Show, Eq)
 
 type CommitMsg = String
@@ -138,13 +140,35 @@ parseSummary = manyTill anyChar (eof Control.Applicative.<|> void newline)
 parseBody :: Parser (Maybe String)
 -- fmap applies function inside Functor.
 -- There we define parser and we transform it's output with use of lambda
-parseBody = fmap (\body -> if null body then Nothing else Just body) (manyTill anyChar eof)
+parseBody = fmap (\body -> if null body then Nothing else Just body) (manyTill anyChar (eof Control.Applicative.<|> void newline))
 
--- parseFooter :: Parser (String, String)
--- parseFooter =
+-- Starts with uppercase letter
+-- Contains tag each newline -> `<key>: <value>`
+-- Must be separated from body by a blank line
+-- MUST not repeat info from structured fragment
+-- Organized in short, clear paragraph
+-- -- `Breaking:` - described breaking changes
+-- -- `Fixes: #N` - closes referenced issues
+-- -- `Co-Authored-by:` - attributes co-ownership
+--
+-- Example:
+--
+-- add!(lib/type-check)[rel]: enforce type checking in function calls
+
+-- Previously, the semantic analyzer allowed mismatched parameter types
+-- in function calls, leading to runtime errors. This fix implements
+-- strict type validation during the semantic analysis phase.
+
+-- Breaking: The `validateCall` function now returns `TypeMismatchError`
+--   instead of returning a boolean, requiring updates in error handling.
+-- Fixes: #247
+-- Co-authored-by: Foo Bar <foo.bar@compiler.dev>
+parseFooter :: Parser (Maybe [(String, String)])
+parseFooter = return Nothing
+
 
 parseCommitMessage :: Parser StandardCommit
-parseCommitMessage = StandardCommit <$> parseVerb <*> parseImportance <*> parseScope <*> parseReason <* char ':' <* space <*> parseSummary <*> parseBody <*> pure Nothing
+parseCommitMessage = StandardCommit <$> parseVerb <*> parseImportance <*> parseScope <*> parseReason <* char ':' <* space <*> parseSummary <*> parseBody <*> parseFooter
 
 -- | Parses a commit message in the Standard Commits format.
 parseStandardCommitMessage :: CommitMsg -> Either ParseError StandardCommit

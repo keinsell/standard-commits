@@ -81,28 +81,6 @@ Each commit MUST have a `<verb>` and a `<summary>` but all the other fields are 
 |                       |                           |                               | `pol` (_policy_)          |
 |                       |                           |                               | `sty` (_styling_)        |
 
-|📝 summary|ℹ️ body|⚙️ footer|
-|-|-|-|
-| Starts with a _lowercase letter_                           | Starts with an _uppercase letter_ | Each tag on a new line, format: `<key>: <value>`  |
-| _Concise_ and _descriptive_ of what the change does        | Expands on _why_ and _how_, not what (already in summary)        | MUST be separated from body by a blank line       |
-| MUST _not repeat_ info from the structured fragment        | Organized in _short_, _clear_ paragraphs                         | `Breaking:` ─ describe breaking changes          |
-| ≤ _50 UTF-8 characters_ (_excluding_ the structured prefix) | Written in _imperative mood_                                     |  `Fixes: #N` ─ closes referenced issues           |
-| SHOULD use a subset of Markdown                            | SHOULD use a subset of Markdown | `Co-authored-by:` ─ attributes co-authorship     |
-
-**Example**
-
-```
-add!(lib/type-check)[rel]: enforce type checking in function calls
-
-Previously, the semantic analyzer allowed mismatched parameter types
-in function calls, leading to runtime errors. This fix implements
-strict type validation during the semantic analysis phase.
-
-Breaking: The `validateCall` function now returns `TypeMismatchError`
-  instead of returning a boolean, requiring updates in error handling.
-Fixes: #247
-Co-authored-by: Foo Bar <foo.bar@compiler.dev>
-```
 
 ## Structured fragment
 

@@ -2,7 +2,7 @@ module Main (main) where
 
 import Lib
 
-commitMessage = "add!(lib/type-check)[rel]: enforce type checking in function calls\nHelloWorld!"
+commitMessage = "add!(lib/type-check)[rel]: enforce type checking in function calls\nHelloWorld!\nCo-Authored:adsad"
 
 main :: IO ()
 main =
