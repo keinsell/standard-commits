@@ -11,10 +11,15 @@ import Text.Parsec.String (Parser)
 data Verb
   = -- | Adds an expectation Introduces new content to the repository with the expectation that it SHALL behave as intended.
     Add
+    -- | ...
   | Remove
+    -- | ...
   | Refactor
+    -- | ...
   | Fix
+    -- | ...
   | Undo
+    -- | ...
   | Release
   deriving (Show, Eq)
 
@@ -130,8 +135,16 @@ parseReason =
 parseSummary :: Parser String
 parseSummary = manyTill anyChar (eof Control.Applicative.<|> void newline)
 
+parseBody :: Parser (Maybe String)
+-- fmap applies function inside Functor.
+-- There we define parser and we transform it's output with use of lambda
+parseBody = fmap (\body -> if null body then Nothing else Just body) (manyTill anyChar eof)
+
+-- parseFooter :: Parser (String, String)
+-- parseFooter =
+
 parseCommitMessage :: Parser StandardCommit
-parseCommitMessage = StandardCommit <$> parseVerb <*> parseImportance <*> parseScope <*> parseReason <* char ':' <* space <*> parseSummary <*> pure Nothing <*> pure Nothing
+parseCommitMessage = StandardCommit <$> parseVerb <*> parseImportance <*> parseScope <*> parseReason <* char ':' <* space <*> parseSummary <*> parseBody <*> pure Nothing
 
 -- | Parses a commit message in the Standard Commits format.
 parseStandardCommitMessage :: CommitMsg -> Either ParseError StandardCommit

@@ -13,6 +13,7 @@
 - [ ] Compilation and distribution research
 - [ ] Simple expressions
 - [ ] [Parser Combinators](https://github.com/lettier/parsing-with-haskell-parser-combinators)
+- [ ]  [Parsing (PLTDI Wiki)](https://pltdi.miraheze.org/wiki/Parsing)
 
 ## References
 
