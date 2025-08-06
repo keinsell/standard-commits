@@ -2,15 +2,14 @@ module Lib where
 
 import Control.Applicative
 import Control.Monad (void)
+import Data.Char (isAlphaNum, isSpace, isUpper)
+import Data.Functor (($>))
+import Data.List (dropWhileEnd, intercalate, unfoldr)
+import Data.Maybe (isJust, isNothing)
 import Text.Parsec
 import Text.Parsec.String (Parser)
 
--- import qualified Data.Map as Map
-
--- ^ A <verb> describes how something has changed via an expectation. An expectation is a requirement that the code should respect. The Standard Commits format provides a set of predefined verbs to ensure consistency and clarity in commit messages, and other verbs SHOULD be avoided.
--- ^ Implies the change MUST NOT be particularly relevant for maintainers or users. This field is a marker that is intended to be applied only to specific commits that maintainers/users should pay attention to.
 -- | Spec: <verb> [REQUIRED]. Defines the action type of the commit message.
-
 data Verb
   = -- | Add: Introduces new content to the repository as a new feature or enhancement.
     Add
@@ -111,9 +110,9 @@ parseImportance =
   do
     -- ? For sure this can be abstracted futher with map or smth
     choice
-      [ string "?" *> pure (Just PossiblyBreaking),
-        string "!" *> pure (Just Breaking),
-        string "!!" *> pure (Just Critical)
+      [ string "?" $> Just PossiblyBreaking,
+        string "!" $> Just Breaking,
+        string "!!" $> Just Critical
       ]
     Text.Parsec.<|> pure Nothing
 
@@ -170,7 +169,9 @@ parseSummary = manyTill anyChar (eof Control.Applicative.<|> void newline)
 parseBody :: Parser (Maybe String)
 -- fmap applies function inside Functor.
 -- There we define parser and we transform it's output with use of lambda
-parseBody = fmap (\body -> if null body then Nothing else Just body) (manyTill anyChar (eof Control.Applicative.<|> void newline))
+parseBody = optionMaybe $ manyTill anyChar (try blankLine Control.Applicative.<|> eof)
+  where
+    blankLine = try (string "\n\n" $> ())
 
 -- Starts with uppercase letter
 -- Contains tag each newline -> `<key>: <value>`
@@ -180,21 +181,28 @@ parseBody = fmap (\body -> if null body then Nothing else Just body) (manyTill a
 -- -- `Breaking:` - described breaking changes
 -- -- `Fixes: #N` - closes referenced issues
 -- -- `Co-Authored-by:` - attributes co-ownership
---
--- Example:
---
--- add!(lib/type-check)[rel]: enforce type checking in function calls
-
--- Previously, the semantic analyzer allowed mismatched parameter types
--- in function calls, leading to runtime errors. This fix implements
--- strict type validation during the semantic analysis phase.
-
--- Breaking: The `validateCall` function now returns `TypeMismatchError`
---   instead of returning a boolean, requiring updates in error handling.
--- Fixes: #247
--- Co-authored-by: Foo Bar <foo.bar@compiler.dev>
 parseFooter :: Parser (Maybe [(String, String)])
-parseFooter = return Nothing
+parseFooter = do
+  lines <- filter (not . null) <$> sepEndBy (Text.Parsec.many $ satisfy (`notElem` ['\r', '\n'])) endOfLine
+  eof
+  let entries = unfoldr groupEntry lines
+  return $ if null entries then Nothing else Just entries
+  where
+    trim = dropWhileEnd isSpace . dropWhile isSpace
+    isValidKey k = not (null k) && isUpper (head k) && all (\c -> isAlphaNum c || c == '-') (tail k)
+    parseKeyValue s = case break (== ':') s of
+      (keyPart, ':' : valuePart) ->
+        let key = trim keyPart
+            value = dropWhile isSpace valuePart
+         in if isValidKey key then Just (key, value) else Nothing
+      _ -> Nothing
+    groupEntry [] = Nothing
+    groupEntry (l : ls) = case parseKeyValue l of
+      Just (key, value) ->
+        let (cont, rest) = span (isNothing . parseKeyValue) ls
+            fullValue = intercalate "\n" (value : cont)
+         in Just ((key, fullValue), rest)
+      Nothing -> groupEntry ls
 
 parseCommitMessage :: Parser StandardCommit
 parseCommitMessage = StandardCommit <$> parseVerb <*> parseImportance <*> parseScope <*> parseReason <* char ':' <* space <*> parseSummary <*> parseBody <*> parseFooter
