@@ -9,28 +9,30 @@ import Text.Parsec.String (Parser)
 
 -- ^ A <verb> describes how something has changed via an expectation. An expectation is a requirement that the code should respect. The Standard Commits format provides a set of predefined verbs to ensure consistency and clarity in commit messages, and other verbs SHOULD be avoided.
 -- ^ Implies the change MUST NOT be particularly relevant for maintainers or users. This field is a marker that is intended to be applied only to specific commits that maintainers/users should pay attention to.
+-- | Spec: <verb> [REQUIRED]. Defines the action type of the commit message.
 
 data Verb
-  = -- | Adds an expectation Introduces new content to the repository with the expectation that it SHALL behave as intended.
+  = -- | Add: Introduces new content to the repository as a new feature or enhancement.
     Add
-  | -- | ...
+  | -- | Remove: Removes content as a part of deprecation or cleanup.
     Remove
-  | -- | ...
+  | -- | Refactor: Restructures existing code without changing its external behavior.
     Refactor
-  | -- | ...
+  | -- | Fix: Corrects errors or bugs in the code.
     Fix
-  | -- | ...
+  | -- | Undo: Reverses previous changes.
     Undo
-  | -- | ...
+  | -- | Release: Marks a commit that publishes a new version or release.
     Release
   deriving (Show, Eq)
 
+-- | Spec: <importance> [OPTIONAL]. Specifies the significance of the commit message change.
 data Importance
-  = -- | `?` (question) Changes something exposed externally, but not an API. It SHOULD NOT be breaking for projects that depend on the underlying repository.
+  = -- | PossiblyBreaking: Non-breaking change indicated by '?'.
     PossiblyBreaking
-  | -- | `!` (exclamation) Changes something exposed externally, and MAY break projects that depend on the underlying repository.
+  | -- | Breaking: Indicates a potentially breaking change using '!'.
     Breaking
-  | -- | `!!` (loud exclamation) This change is critical ─ previous versions have severe issues that must be addressed. Projects depending on the underlying repository SHOULD update immediately. The <footer> MUST specify the last safe commit (Last-safe-commit).
+  | -- | Critical: Indicates a critical change using '!!' that requires immediate update.
     Critical
   deriving
     ( Show,
@@ -39,8 +41,9 @@ data Importance
 
 type ScopeContext = Maybe String
 
+-- | Spec: <scope> [OPTIONAL]. Specifies the target area of the changes, such as executable, library, testing, build, documentation, CI, or CD.
 data Scope
-  = -- | `exe` (executable) The change affects the executable part of the project.
+  = -- | Executable: Change affects the executable component of the project.
     Executable (ScopeContext)
   | BackendLibrary (ScopeContext)
   | Testing (ScopeContext)
@@ -51,8 +54,35 @@ data Scope
   deriving
     (Show, Eq)
 
-data Reason = Introduction | Preliminary | Efficiency | Reliability | Compatibility | Temporary | Experiment | Security | Upgrade | UserExperience | Policy | Styling deriving (Show, Eq)
+-- | Spec: <reason> [OPTIONAL]. Represents the underlying motivation for the commit (e.g., bug fix, improvement, or stylistic change).
+data Reason
+  = -- | Introduction: Introduces a new feature or functionality.
+    Introduction
+  | -- | Preliminary: Indicates preliminary work paving the way for future changes.
+    Preliminary
+  | -- | Efficiency: Improves performance or resource usage.
+    Efficiency
+  | -- | Reliability: Increases system reliability.
+    Reliability
+  | -- | Compatibility: Enhances compatibility with other systems.
+    Compatibility
+  | -- | Temporary: Represents a temporary fix or workaround.
+    Temporary
+  | -- | Experiment: Experimental changes.
+    Experiment
+  | -- | Security: Enhances security measures.
+    Security
+  | -- | Upgrade: Upgrades an aspect of the system.
+    Upgrade
+  | -- | UserExperience: Improves the user experience.
+    UserExperience
+  | -- | Policy: Aligns code with updated policies.
+    Policy
+  | -- | Styling: Modifies styling or formatting.
+    Styling
+  deriving (Show, Eq)
 
+-- | Spec: Standard Commit. A complete parsed commit message including <verb>, <importance>, <scope>, <reason>, <summary>, <body>, and <footer>.
 data StandardCommit = StandardCommit Verb (Maybe Importance) (Maybe Scope) (Maybe Reason) CommitMsg (Maybe String) (Maybe [(String, String)])
   deriving (Show, Eq)
 
@@ -165,7 +195,6 @@ parseBody = fmap (\body -> if null body then Nothing else Just body) (manyTill a
 -- Co-authored-by: Foo Bar <foo.bar@compiler.dev>
 parseFooter :: Parser (Maybe [(String, String)])
 parseFooter = return Nothing
-
 
 parseCommitMessage :: Parser StandardCommit
 parseCommitMessage = StandardCommit <$> parseVerb <*> parseImportance <*> parseScope <*> parseReason <* char ':' <* space <*> parseSummary <*> parseBody <*> parseFooter
